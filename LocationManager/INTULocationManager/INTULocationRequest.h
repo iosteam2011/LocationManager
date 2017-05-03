@@ -78,6 +78,8 @@ typedef NS_ENUM(NSInteger, INTULocationRequestType) {
 @property (nonatomic, readonly) BOOL hasTimedOut;
 /** The block to execute when the location request completes. */
 @property (nonatomic, copy, __INTU_NULLABLE) INTULocationRequestBlock block;
+/** 当定位精度达不到要求时是否允许降级返回低精度位置信息 */
+@property (nonatomic, assign) BOOL allowDegrade;
 
 /** Designated initializer. Initializes and returns a newly allocated location request object with the specified type. */
 - (instancetype)initWithType:(INTULocationRequestType)type __INTU_DESIGNATED_INITIALIZER;
