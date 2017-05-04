@@ -219,6 +219,32 @@ static id _sharedInstance;
                                                allowDegrade:(BOOL)allowDegrade
                                                       block:(INTULocationRequestBlock)block
 {
+    return [self requestLocationWithDesiredAccuracy:desiredAccuracy timeout:timeout delayUntilAuthorized:delayUntilAuthorized allowDegrade:allowDegrade onReceiveResponse:nil block:block];
+}
+
+/**
+ Asynchronously requests the current location of the device using location services, optionally delaying the timeout countdown until the user has
+ responded to the dialog requesting permission for this app to access location services.
+ 
+ @param desiredAccuracy      The accuracy level desired (refers to the accuracy and recency of the location).
+ @param timeout              The maximum amount of time (in seconds) to wait for a location with the desired accuracy before completing. If
+ this value is 0.0, no timeout will be set (will wait indefinitely for success, unless request is force completed or canceled).
+ @param delayUntilAuthorized A flag specifying whether the timeout should only take effect after the user responds to the system prompt requesting
+ permission for this app to access location services. If YES, the timeout countdown will not begin until after the
+ app receives location services permissions. If NO, the timeout countdown begins immediately when calling this method.
+ @param allowDegrade         v4.3增：当定位精度达不到desiredAccuracy要求时，是否允许返回精度较低的位置信息（可以防止超时定位失败现象）
+ @param onReceiveResponse    v4.4增：接收到位置信息的水平精度误差<=2km时调用一次
+ @param block                The block to execute upon success, failure, or timeout.
+ 
+ @return The location request ID, which can be used to force early completion or cancel the request while it is in progress.
+ */
+- (INTULocationRequestID)requestLocationWithDesiredAccuracy:(INTULocationAccuracy)desiredAccuracy
+                                                    timeout:(NSTimeInterval)timeout
+                                       delayUntilAuthorized:(BOOL)delayUntilAuthorized
+                                               allowDegrade:(BOOL)allowDegrade
+                                          onReceiveResponse:(nullable INTULocationRequestOnReceiveResponse)onReceiveResponse
+                                                      block:(INTULocationRequestBlock)block
+{
     NSAssert([NSThread isMainThread], @"INTULocationManager should only be called from the main thread.");
     
     if (desiredAccuracy == INTULocationAccuracyNone) {
@@ -232,6 +258,7 @@ static id _sharedInstance;
     locationRequest.timeout = timeout;
     locationRequest.block = block;
     locationRequest.allowDegrade = allowDegrade;
+    locationRequest.onReceiveResponse = onReceiveResponse;
     
     BOOL deferTimeout = delayUntilAuthorized && ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusNotDetermined);
     if (!deferTimeout) {
@@ -241,7 +268,6 @@ static id _sharedInstance;
     [self addLocationRequest:locationRequest];
     
     return locationRequest.requestID;
-
 }
 
 /**
@@ -632,6 +658,10 @@ static id _sharedInstance;
                 CLLocationAccuracy currentLocationHorizontalAccuracy = mostRecentLocation.horizontalAccuracy;
                 NSTimeInterval staleThreshold = [locationRequest updateTimeStaleThreshold];
                 CLLocationAccuracy horizontalAccuracyThreshold = [locationRequest horizontalAccuracyThreshold];
+                if (currentLocationTimeSinceUpdate <= staleThreshold && currentLocationHorizontalAccuracy <= 2000 && locationRequest.onReceiveResponse) {
+                    locationRequest.onReceiveResponse(mostRecentLocation);
+                    locationRequest.onReceiveResponse = nil;
+                }
                 if (currentLocationTimeSinceUpdate <= staleThreshold &&
                     currentLocationHorizontalAccuracy <= horizontalAccuracyThreshold) {
                     // The request's desired accuracy has been reached, complete it

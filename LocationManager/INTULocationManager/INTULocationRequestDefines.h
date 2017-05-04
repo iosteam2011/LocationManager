@@ -163,6 +163,13 @@ typedef NS_ENUM(NSInteger, INTUHeadingStatus) {
 typedef void(^INTULocationRequestBlock)(CLLocation *currentLocation, INTULocationAccuracy achievedAccuracy, INTULocationStatus status);
 
 /**
+ A block type for a location request, which is executed when the request receive currentLocation and currentLocation.horizontalAccuracy <= 2km.
+ 
+ @param currentLocation The most recent & accurate current location available when the block executes, or nil if no valid location is available.
+ */
+typedef void(^INTULocationRequestOnReceiveResponse)(CLLocation *currentLocation);
+
+/**
  A block type for a heading request, which is executed when the request succeeds.
 
  @param currentHeading  The most recent current heading available when the block executes.
